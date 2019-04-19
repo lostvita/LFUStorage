@@ -14,7 +14,7 @@ npm install lfu-storage --save
 import LFUStorage from 'lfu-storage'
 storage = new LFUStorage(namespace)  // namespace 可选
 
-storage.nameSpace(name).size(2 * 1024 * 1024).expire(7 * 24 * 60 * 60)
+storage.nameSpace(name).size(maxSize).expire(secs)
 storage.set(key, val)
 storage.get(key)
 ```
