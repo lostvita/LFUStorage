@@ -1,5 +1,5 @@
 {
-  "name": "lfustorage",
+  "name": "lfu-storage",
   "version": "1.0.0",
   "description": "a lfu-storage plugin",
   "main": "index.js",

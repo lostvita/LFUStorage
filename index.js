@@ -5,12 +5,12 @@
 import { sizeof, clone, arr2Obj, warn } from './lib/utils'
 import Pubsub from './lib/pubsub'
 
-class LFUCache {
+class LFUStorage {
     constructor (nameSpace) {
         this.$nameSpace = nameSpace
         this._pubsub = new Pubsub()
         this._evtToken = new Map
-        this._initCache()
+        this._initStorage()
         this._calculateRemainSize()
     }
 
@@ -23,16 +23,16 @@ class LFUCache {
     }
 
     get _EVENT () {
-        return new Set(['expire', 'set', 'remove', 'clear'])
+        return new Set(['expire', 'set', 'remove', 'clear', 'overflow'])
     }
 
     nameSpace (nameSpace) {
         if(!nameSpace) {
-            warn('LFUCache: namespace should not empty.')
+            warn('LFUStorage: namespace should not empty.')
             return
         }
         this.$nameSpace = nameSpace
-        this._initCache()
+        this._initStorage()
         return this
     }
 
@@ -48,14 +48,14 @@ class LFUCache {
 
     expire (secs) {
         if(!this.$nameSpace){
-            warn('LFUCache: Please set namespace first.')
+            warn('LFUStorage: Please set namespace first.')
             return
         }
         this.$expire = secs || 7 * 24 * 60 * 60
-        const lfuExpire = JSON.parse(window.localStorage.getItem('LFUCACHE_EXPIRE') || '{}')
+        const lfuExpire = JSON.parse(window.localStorage.getItem('LFU_STORAGE_EXPIRE') || '{}')
         if(!lfuExpire[this.$nameSpace]) {
             lfuExpire[this.$nameSpace] = Date.now()
-            window.localStorage.setItem('LFUCACHE_EXPIRE', JSON.stringify(lfuExpire))
+            window.localStorage.setItem('LFU_STORAGE_EXPIRE', JSON.stringify(lfuExpire))
         }
         return this
     }
@@ -88,12 +88,13 @@ class LFUCache {
         }
         const { max, size } = this._isOverflow(key, data)
         if(size === -1) {
-            warn(`LFUCache: exceed maxsize, store ${key} failed.`)
+            warn(`LFUStorage: exceed maxsize, store ${key} failed.`)
             return this
         } else if(!max || size) {
-            const del = this._delete(max, size, key)
+            const del = this._delete(size, key)
+            this._pubsub.publish('overflow', del)
             if(!del) {
-                warn(`LFUCache: exceed maxsize, store ${key} failed.`)
+                warn(`LFUStorage: exceed maxsize, store ${key} failed.`)
                 return this
             }
         }
@@ -102,7 +103,7 @@ class LFUCache {
             _weight: weight,
             _lastmodify: new Date().getTime()
         }, data)
-        this.$cache[key] = val
+        this.$storage[key] = val
         this._update()
         this._pubsub.publish('set', key)
         return this
@@ -111,7 +112,7 @@ class LFUCache {
     get (key) {
         this._delExpire()
         const exclude = new Set(['_id', '_weight', '_lastmodify'])
-        const val = Reflect.get(this.$cache, key)
+        const val = Reflect.get(this.$storage, key)
         return val ? Object.keys(val)
               .filter(each => !exclude.has(each))
               .reduce((acc, curr) => {
@@ -122,7 +123,7 @@ class LFUCache {
     }
 
     remove (key) {
-        const ret = Reflect.deleteProperty(this.$cache, key)
+        const ret = Reflect.deleteProperty(this.$storage, key)
         if(ret) {
             this._update()
             this._pubsub.publish('remove', key)
@@ -132,13 +133,13 @@ class LFUCache {
 
     keys () {
         this._delExpire()
-        return Object.keys(this.$cache)
+        return Object.keys(this.$storage)
     }
 
     values () {
         this._delExpire()
         const exclude = new Set(['_id', '_weight', '_lastmodify'])
-        return Object.values(this.$cache)
+        return Object.values(this.$storage)
                      .sort((a, b) => b._weight - a._weight)
                      .map(each => Object.keys(each)
                         .filter(key => !exclude.has(key))
@@ -153,7 +154,7 @@ class LFUCache {
         this._delExpire()
         const exclude = new Set(['_id', '_weight', '_lastmodify'])
         return Object.entries(
-                    Object.values(this.$cache)
+                    Object.values(this.$storage)
                     .sort((a, b) => b._weight - a._weight)
                     .reduce((acc, curr) => {
                         acc[curr._id] = Object.keys(curr)
@@ -182,11 +183,11 @@ class LFUCache {
     }
 
     has (key) {
-        return Reflect.has(this.$cache, key)
+        return Reflect.has(this.$storage, key)
     }
 
     clear () {
-        this.$cache = Object.create(null)
+        this.$storage = Object.create(null)
         window.localStorage.removeItem(this.$nameSpace)
         if(!this._isExpire()) {
             this._pubsub.publish('clear', this.$nameSpace)
@@ -194,32 +195,31 @@ class LFUCache {
         return this
     }
 
-    _initCache () {
+    _initStorage () {
         this.$max = this.MAX
         this.$size = this.SIZE
         this._delExpire()
-        this.$cache = JSON.parse(window.localStorage.getItem(this.$nameSpace)) || Object.create(null)
+        this.$storage = JSON.parse(window.localStorage.getItem(this.$nameSpace)) || Object.create(null)
         this._amount = this.keys().length
     }
 
     _find (key) {
-        return Reflect.get(this.$cache, key)
+        return Reflect.get(this.$storage, key)
     }
 
-    _delete(max, size, id) {
+    _delete(size, id) {
         let delArr = null
         let delSize = 0
         const delKeys = []
         const emptyObjSize = sizeof(JSON.stringify({}))
-        const cacheArr = Object.values(this.$cache)
+        const storageArr = Object.values(this.$storage)
                                .sort((a, b) => a._weight - b._weight)
                                .filter(each => each._id !== id)
-        const len = cacheArr.length
-        let i = !max ? 1 : 0 // 超过数量限制，将第一个剔除
-        let position = i
-        for(; i < len; i++) {
-            delKeys.push(cacheArr[i]._id)
-            delArr = cacheArr.slice(0, i + 1)
+        const len = storageArr.length
+        let position = 0
+        for(let i = 0; i < len; i++) {
+            delKeys.push(storageArr[i]._id)
+            delArr = storageArr.slice(0, i + 1)
             delSize = sizeof(JSON.stringify(arr2Obj(delArr))) - emptyObjSize
             position = i
             if(delSize >= size) {
@@ -228,13 +228,12 @@ class LFUCache {
             }
         }
         if(size) return false
-
-        const remainArr = cacheArr.slice(position + 1, len)
-        const cache = remainArr.reduce((acc, curr) => {
+        const remainArr = storageArr.slice(position + 1, len)
+        const storage = remainArr.reduce((acc, curr) => {
             acc[curr._id] = curr
             return acc
         }, {})
-        this.$cache = cache
+        this.$storage = storage
         return delKeys
     }
 
@@ -242,21 +241,21 @@ class LFUCache {
         if(this._isExpire()) {
             this._pubsub.publish('expire', this.$nameSpace)
             this._pubsub.unsubscribe('expire')
-            this._updateLfuExpire()
             this.clear()
+            this._updateLfuExpire()
         }
     }
 
     _update () {
-        window.localStorage.setItem(this.$nameSpace, JSON.stringify(this.$cache))
+        window.localStorage.setItem(this.$nameSpace, JSON.stringify(this.$storage))
         this._amount = this.keys().length
         this._calculateRemainSize()
     }
 
     _updateLfuExpire () {
-        const _expire = JSON.parse(window.localStorage.getItem('LFUCACHE_EXPIRE'))
+        const _expire = JSON.parse(window.localStorage.getItem('LFU_STORAGE_EXPIRE'))
         Reflect.deleteProperty(_expire, this.$nameSpace)
-        window.localStorage.setItem('LFUCACHE_EXPIRE', JSON.stringify(_expire))
+        window.localStorage.setItem('LFU_STORAGE_EXPIRE', JSON.stringify(_expire))
     }
 
     _isOverflow (key, data) {
@@ -287,7 +286,7 @@ class LFUCache {
     }
 
     _isExpire () {
-        let _expire = JSON.parse(window.localStorage.getItem('LFUCACHE_EXPIRE'))
+        let _expire = JSON.parse(window.localStorage.getItem('LFU_STORAGE_EXPIRE'))
         _expire = _expire ? _expire[this.$nameSpace] : null
         if(!_expire) return false
         const now = Date.now()
@@ -299,4 +298,4 @@ class LFUCache {
     }
 }
 
-export default LFUCache
+export default LFUStorage
