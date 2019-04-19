@@ -72,6 +72,10 @@ class LFUStorage {
         return this.$nameSpace
     }
 
+    getRemainMax () {
+        return this.$max - this.keys().length
+    }
+
     getRemainSize () {
         return this.$remainSize
     }
