@@ -6,7 +6,7 @@
 
 ## Install
 ```shell
-npm install lfu-storage --save
+npm install lfustorage --save
 ```
 
 ## Usage
