@@ -1,5 +1,5 @@
 /**
- * LFU(最近最久未使用)本地存储系统
+ * LFU(最近最不常使用)本地存储系统
  */
 
 import { sizeof, clone, arr2Obj, warn } from './lib/utils'
