@@ -11,7 +11,7 @@ npm install lfustorage --save
 
 ## Usage
 ```javascript
-import LFUStorage from 'lfu-storage'
+import LFUStorage from 'lfustorage'
 storage = new LFUStorage(namespace)  // namespace 可选
 
 storage.nameSpace(name).size(maxSize).expire(secs)
