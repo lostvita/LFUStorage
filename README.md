@@ -12,7 +12,7 @@ npm install lfustorage --save
 ## Usage
 ```javascript
 import LFUStorage from 'lfustorage'
-storage = new LFUStorage(namespace)  // namespace 可选
+const storage = new LFUStorage(namespace)  // namespace 可选
 
 storage.nameSpace(name).size(maxSize).expire(secs)
 storage.set(key, val)
@@ -47,7 +47,7 @@ storage.get(key)
 import LFUStorage from 'lfu-storage'
 
 const chatStorage = new LFUStorage('CHAT_MESSAGE')
-chatStorage.max(10).expire(3 * 24 * 60 * 60) // 设置聊天信息缓存上限10条（个用户）
+chatStorage.max(10).expire(3 * 24 * 60 * 60) // 设置聊天信息缓存上限10条（个用户）3天后过期
 
 // 订阅溢出事件
 chatStorage.on('overflow', (res) => { console.log(`storage overflow,delete keys: ${res}`) })
