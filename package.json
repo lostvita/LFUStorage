@@ -1,0 +1,23 @@
+{
+  "name": "lfustorage",
+  "version": "1.0.0",
+  "description": "a lfu-storage plugin",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qiudongwei/LFUStorage.git"
+  },
+  "keywords": [
+    "LFU",
+    "localStorage"
+  ],
+  "author": "_安歌",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/qiudongwei/LFUStorage/issues"
+  },
+  "homepage": "https://github.com/qiudongwei/LFUStorage#readme"
+}
