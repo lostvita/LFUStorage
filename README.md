@@ -1,6 +1,6 @@
 # LFUStorage
 
-基于[LFU](https://en.wikipedia.org/wiki/LFU)（最近最久未使用）策略和localStorage设计的web存储系统，改系统支持两种方式进行数据置换：
+基于[LFU](https://en.wikipedia.org/wiki/LFU)（最近最不常使用）策略和localStorage设计的web存储系统，改系统支持两种方式进行数据置换：
 - 基于存储数量
 - 基于内存大小
 
