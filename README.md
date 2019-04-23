@@ -23,8 +23,8 @@ storage.get(key)
 | :-----| :---- | :---- |
 |nameSpace|name|设置存储实例的命名空间。name: String/必须（对应localStorage的key值）|
 |max|num|设置存储数量上限。max：Number/可选，默认值是50|
-|size|val|设置存储空间上限|val: Number/非必须，默认值是1MB|
-|expire|sec|设置过期时间|sec: Number/非必须。默认值7days|
+|size|val|设置存储空间上限。val: Number/非必须，默认值是1MB|
+|expire|sec|设置过期时间。sec: Number/非必须。默认值7days|
 |getMax|/|获取存储数量上限|
 |getSize|/|获取存储空间上限|
 |getRemainMax|/|获取剩余存储数量|
